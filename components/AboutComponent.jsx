@@ -33,7 +33,15 @@ export function About() {
                 </div>
             </div>
             <div className={styles.charactor}>
-                <Image src={currentImage} alt="キャラクター" className={styles.image} />
+                {/* 表示幅は AboutComponent.module.css の .image（height 固定・width: auto）で決まる。
+                    〜768px は 50vh、それ以上は 100vh の高さに縦横比（satou 820/1180、amau 701/1011、
+                    どちらも約 0.69）を掛けた幅になる。 */}
+                <Image
+                    src={currentImage}
+                    alt="キャラクター"
+                    className={styles.image}
+                    sizes="(max-width: 768px) 35vh, 70vh"
+                />
             </div>
         </div>
     );

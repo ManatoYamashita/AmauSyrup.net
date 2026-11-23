@@ -14,8 +14,18 @@ export function Card({title, text, url}) {
 
     return(
         <a className={styles.card} href={url}>
+            {/* 表示幅は cardComponent.module.css の .image に合わせる。
+                〜768px は高さ 200px 固定の object-fit: cover なので、4:3 のサムネイルは
+                幅 200 × 4/3 ≒ 267px まで拡大されてから切り抜かれる。それ以上は 300px のカードの 130% = 390px。 */}
             {videoId ? (
-                <Image src={thumbnailUrl} alt="YouTube Thumbnail" className={styles.image} width={480} height={360} />
+                <Image
+                    src={thumbnailUrl}
+                    alt="YouTube Thumbnail"
+                    className={styles.image}
+                    width={480}
+                    height={360}
+                    sizes="(max-width: 768px) 267px, 390px"
+                />
             ) : (
                 <p>Error! Couldn't bring Images from YouTube</p>
             )}
