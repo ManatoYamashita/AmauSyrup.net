@@ -31,6 +31,53 @@ export const Text = ({ text }) => {
   });
 };
 
+// Notion の画像ピッカーで挿入した Unsplash の写真は、原寸（数千px・1MB超）の URL で
+// 届く。Unsplash の API ガイドラインは画像を images.unsplash.com から直接表示（hotlink）
+// することを求めており、自前のサーバー（next/image）で中継すると閲覧の計測が Unsplash に
+// 届かなくなる。そのため中継はせず、Unsplash（imgix）自身のリサイズ用パラメータで
+// 表示幅に合ったサイズを要求する。
+// https://help.unsplash.com/en/articles/2511271-guideline-hotlinking-images
+// https://unsplash.com/documentation#dynamically-resizable-images
+const UNSPLASH_HOST = "images.unsplash.com";
+const POST_IMAGE_WIDTHS = [320, 480, 660, 990, 1320];
+// .container は max-width: 700px / 左右 padding 20px / border-box のため、
+// 本文の画像幅は「画面幅 - 40px」で、最大 660px。
+const POST_IMAGE_SIZES = "(max-width: 700px) calc(100vw - 40px), 660px";
+
+const unsplashUrl = (url, width) => {
+  const resized = new URL(url);
+  // fm=jpg が残っていると auto=format（AVIF/WebP の自動選択）が効かない。
+  resized.searchParams.delete("fm");
+  resized.searchParams.set("auto", "format");
+  // 原寸より大きい幅を指定しても拡大しない。
+  resized.searchParams.set("fit", "max");
+  resized.searchParams.set("w", String(width));
+  return resized.toString();
+};
+
+// Unsplash の写真なら srcSet / sizes を付けた属性を返す。それ以外（Notion にアップロード
+// された画像の署名付き URL など）はリサイズできないため、そのままの src を返す。
+const responsiveImageProps = (src) => {
+  let url;
+  try {
+    url = new URL(src);
+  } catch {
+    return { src };
+  }
+  // 高さや切り抜き範囲が指定済みの URL は、幅だけ変えると縦横比が崩れるので触らない。
+  const hasCrop = ["h", "rect", "fit", "ar"].some((key) =>
+    url.searchParams.has(key)
+  );
+  if (url.hostname !== UNSPLASH_HOST || hasCrop) {
+    return { src };
+  }
+  return {
+    src: unsplashUrl(src, 660),
+    srcSet: POST_IMAGE_WIDTHS.map((w) => `${unsplashUrl(src, w)} ${w}w`).join(", "),
+    sizes: POST_IMAGE_SIZES,
+  };
+};
+
 const renderNestedList = (block) => {
   const { type } = block;
   const value = block[type];
@@ -121,7 +168,7 @@ const renderBlock = (block) => {
       const caption = value.caption ? value.caption[0]?.plain_text : "";
       return (
         <figure>
-          <img src={src} alt={caption} />
+          <img {...responsiveImageProps(src)} alt={caption} />
           {caption && <figcaption>{caption}</figcaption>}
         </figure>
       );
